@@ -9,7 +9,8 @@ from functools import partial
 from copy import deepcopy
 import warnings
 from sklearn.metrics import accuracy_score
-from utils import create_raw_eeg, create_eeg_info, add_gaussian_white_noise
+from utils import create_raw_eeg, create_eeg_info
+from processing_toolkit import add_gaussian_white_noise
 import scipy.special as scs
 from utils import are_lists_equal
 

@@ -2,15 +2,10 @@
 # -*- coding:utf-8 -*-
 
 
-'''
-    本文件用于测试在Benchmark，Beta等数据上channel attack对于TDCA算法的准确率和ITR的影响。
-    对5个时间窗（0.2-1s）进行交叉验证
-    使用置零的方法进行channel attack
-
-'''
 import os
 import numpy as np
-from utils import suggested_weights_filterbank, ITR, add_gaussian_white_noise
+from utils import suggested_weights_filterbank, ITR
+from processing_toolkit import add_gaussian_white_noise
 from ssvep_tdca import SSVEP_TDCA, SSVEP_EAM_TDCA, SSVEP_CAM_TDCA, SSVEP_ROBUST_TDCA
 from dataset import readSubjectData
 import time
@@ -24,7 +19,7 @@ def get_args():
     parser = argparse.ArgumentParser('TDCA parameters', add_help=False)
     parser.add_argument('--target_noise_db', default=0, type=int) # 对应噪声方差为1
 
-    parser.add_argument('--tdca_mode', default='ROBUST', type=str,
+    parser.add_argument('--tdca_mode', default='EAM', type=str,
                         help='normal, EAM, CAM, or ROBUST')
     parser.add_argument('--robust_method', default='weights', type=str,
                         help='sum, max, or weights')
@@ -160,8 +155,8 @@ def main(args):
     for sub_idx, subject_name in enumerate(sub_name_list):
         print('======================== subject: ', subject_name, ' ========================')
         for t_idx in range(5):
-            # winLEN = 0.2 + t_idx * 0.2
-            winLEN = 1
+            winLEN = 0.2 + t_idx * 0.2
+            # winLEN = 1
             print('******** window length: ', str(winLEN), 's **********')
             time_start = time.time()
             # TDCA
