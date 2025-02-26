@@ -21,7 +21,7 @@ def get_args():
 
     parser.add_argument('--mode', default='mgif', type=str,
                         help='normal, egraph, sgraph, or mgif')
-    parser.add_argument('--mgif_method', default='weights', type=str,
+    parser.add_argument('--mgif_method', default='sum', type=str,
                         help='sum, max, or weights')
     parser.add_argument('--root_dir', default='dataset', type=str,
                         help='root directory of the dataset')
