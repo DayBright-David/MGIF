@@ -155,8 +155,8 @@ def main(args):
     for sub_idx, subject_name in enumerate(sub_name_list):
         print('======================== subject: ', subject_name, ' ========================')
         for t_idx in range(5):
-            # winLEN = 0.2 + t_idx * 0.2
-            winLEN = 1
+            winLEN = 0.2 + t_idx * 0.2
+            # winLEN = 1
             print('******** window length: ', str(winLEN), 's **********')
             time_start = time.time()
             weights_filterbank = suggested_weights_filterbank()
