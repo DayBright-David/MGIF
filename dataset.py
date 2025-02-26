@@ -692,6 +692,3 @@ def build_Benchmark_dataset(root_dir, winLEN=1):
     test_dataset = TensorDataset(test_data)
 
     return train_dataset, test_dataset
-
-
-#build_Benchmark_dataset(root_dir='D:\牟新语的文件夹\gxr暑研\classification_TDCA_TRF\dataset')

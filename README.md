@@ -27,10 +27,10 @@ Before executing the code, please download the dataset from https://bci.med.tsin
 
 ## Get started
 
-The command to compute accuracy and ITR for different TDCA algorithms on the Benchmark and Beta datasets is:
+The command to compute accuracy and ITR for different recognition algorithms on the Benchmark and Beta datasets is:
 
 ```
-python train_ssvep_tdca_test_channel_attack_multi_time_n_fold.py --dataset_name [DATASET_NAME] --tdca_mode [TDCA_MODE] --robust_method [ROBUST_METHOD] --target_noise_db=0
+python train_ssvep_recognition_algorithms_test_channel_attack_multi_time_n_fold.py --dataset_name [DATASET_NAME] --mode [MODE] --mgif_method [MGIF_METHOD] --target_noise_db=0
 ```
 
 The detailed explanation of the parameters:
@@ -39,8 +39,8 @@ The detailed explanation of the parameters:
 | :-------------: | :--: | :----------------------------------------------------------: |
 |  dataset_name   | str  |                    `Benchmark` or `Beta`                     |
 |    root_dir     | str  |     Root directory of the dataset. Default is `dataset`.     |
-|    tdca_mode    | str  | Type of the TDCA method, can be specified as <br>`normal` -- normal TDCA <br/>`EAM` -- E-graph <br/>`CAM` -- S-graph <br/>`ROBUST` -- MGIF |
-|   robust_mode   | str  | Only used when `tdca_mode==ROBUST`. Can be specified as `sum`, `max`, or `weights`. |
+|      mode       | str  | Type of the recognition method, can be specified as <br>`normal` -- normal TDCA <br/>`EAM` -- E-graph <br/>`CAM` -- S-graph <br/>`ROBUST` -- MGIF |
+|    mgif_mode    | str  | Only used when `mode==mgif`. Can be specified as `sum`, `max`, or `weights`. |
 | target_noise_db | int  | Power of the noise in dB. Default is `0`, corresponding to a noise variance of `1`. |
 
 ## Citation
