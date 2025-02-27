@@ -82,8 +82,6 @@ def _r_canoncorr_withUV(X: ndarray,
 
     R = np.zeros((filterbank_num, stimulus_num))
 
-    # 一个trial中多个filterbank频带数据经过n_component个空域滤波器的结果
-    # ndarray: (filterbank, stimulus_num, n_component, 2*time)
     trial_spatial_filtered_data = np.zeros((filterbank_num, stimulus_num, n_component, signal_len+P[0].shape[-1]))
     for k in range(filterbank_num):
         tmp_X = X[k,:,:]
@@ -98,20 +96,17 @@ def _r_canoncorr_withUV(X: ndarray,
                 raise ValueError('Unknown data type')
             
 
-            A_r = U[k,i,:,:]  # (n_delay*channel, n_component)
+            A_r = U[k,i,:,:] 
             B_r = V[k,i,:,:]
             
-            a = A_r.T @ tmp   # (n_component, 2*time)，待分类trial的空域滤波结果
-            b = B_r.T @ Y_tmp  # 第i类的template的空域滤波结果
+            a = A_r.T @ tmp   
+            b = B_r.T @ Y_tmp  
 
             trial_spatial_filtered_data[k, i, :, :] = a
 
             a = np.reshape(a, (-1))
             b = np.reshape(b, (-1))
-            
-
-            # r2 = stats.pearsonr(a, b)[0]
-            # r = stats.pearsonr(a, b)[0]
+          
             r = np.corrcoef(a, b)[0,1]
             R[k,i] = r
 
@@ -176,10 +171,6 @@ def _gen_P_combine_X(X: List[ndarray],
         Combine X and X @ P along time axis
     """
 
-    # X: list: (trial_num,), array(channel_num * n_delay, time)
-    # P: array shape: (signal_len, signal_len)
-
-    # list: (trial_num, ), array: (n_delay*channel, 2*time)
     return [np.concatenate([X_single_trial, X_single_trial @ P], axis=-1) for X_single_trial in X]
 
 
@@ -196,11 +187,10 @@ def _cal_ref_sig_P(ref_sig):
     - ref_sig_P: list: (class, ), ndarray: (time, time)
     '''
 
-    ######## calculate matrix P for each stimulus frequency using the reference signal ##############
     ref_sig_Q, _, _ = qr_list(
-        ref_sig)  # List shape: (class_num,), array shape: (signal_len, min(signal_len, harmonic_num))
+        ref_sig)  
     ref_sig_P = [Q @ Q.T for Q in
-                 ref_sig_Q]  # P = Q @ Q.T  # List shape: (class_num,), array shape: (signal_len, signal_len)
+                 ref_sig_Q]  
 
     return ref_sig_P
 
@@ -226,34 +216,24 @@ def _augmentData(X, ref_sig_P, n_delay, n_jobs=None):
 
     '''
 
-
     if n_jobs is not None:
             X_train_delay = Parallel(n_jobs = n_jobs)(delayed(partial(_gen_delay_X, n_delay = n_delay))(X = X_single_class) for X_single_class in X)
             P_combine_X_train = Parallel(n_jobs = n_jobs)(delayed(_gen_P_combine_X)(X = X_single_class, P = P_single_class) for X_single_class, P_single_class in zip(X_train_delay, ref_sig_P))
     else:
-        ######################## data augmentation ############################
-
-        # 1. calculate delayed signal
+        
         X_train_delay = []
         for X_single_class in X:
             X_train_delay.append(
                 _gen_delay_X(X = X_single_class, n_delay = n_delay)
             )
 
-        # X_train_delay: list: (class_num, ), list: (trial_num, ), array(channel_num*n_delay, time)
-
-        # 2. calculate projection and concatenate
         P_combine_X_train = []
         for X_single_class, P_single_class in zip(X_train_delay, ref_sig_P):
             P_combine_X_train.append(
                 _gen_P_combine_X(X = X_single_class, P = P_single_class)
             )
 
-        # P_combine_X_train: list: (class_num, ), list: (trial_num, ), array: (n_delay*channel, 2*time)
-
-
-
-    # Calculate template
+        
     if n_jobs is not None:
         P_combine_X_train_mean = Parallel(n_jobs=n_jobs)(delayed(mean_list)(X = P_combine_X_train_single_class) for P_combine_X_train_single_class in P_combine_X_train)
     else:
@@ -262,8 +242,6 @@ def _augmentData(X, ref_sig_P, n_delay, n_jobs=None):
             P_combine_X_train_mean.append(
                 mean_list(X = P_combine_X_train_single_class)
             )
-        # P_combine_X_train_mean: list: (class_num, ), array: (n_delay*channel, 2*time)
-
 
     return P_combine_X_train, P_combine_X_train_mean
 
@@ -281,24 +259,23 @@ def _replace_with_weighted_average(X, normalized_adj_matrix, problematic_sensors
     :return:
     '''
     X_copy = X.copy()
-    # 把自身的权重赋为0
+    
     for i in range(normalized_adj_matrix.shape[0]):
         normalized_adj_matrix[i, i] = 0
 
     if problematic_sensors is not None:
-        for i in problematic_sensors:  # 遍历所有有问题的传感器
-            # 找到与当前传感器相邻的传感器
+        for i in problematic_sensors:  
             neighboring_sensors_indices = np.where(normalized_adj_matrix[i, :] > 0)[0]
-            # 计算相邻传感器的加权平均值
-            if neighboring_sensors_indices.size > 0:  # 确保有相邻传感器
+            
+            if neighboring_sensors_indices.size > 0:  
                 if X_copy.ndim == 2:
                     weighted_average = np.average(X_copy[neighboring_sensors_indices, :], axis=0,
                                                   weights=normalized_adj_matrix[i, neighboring_sensors_indices])
-                    X_copy[i, :] = weighted_average  # 用加权平均值替换整个有问题的传感器的数据
+                    X_copy[i, :] = weighted_average  
                 elif X_copy.ndim == 3:
                     weighted_average = np.average(X_copy[:, neighboring_sensors_indices, :], axis=1,
                                                   weights=normalized_adj_matrix[i, neighboring_sensors_indices])
-                    X_copy[:, i, :] = weighted_average  # 用加权平均值替换整个有问题的传感器的数据
+                    X_copy[:, i, :] = weighted_average  
 
         return X_copy
     else:
@@ -323,16 +300,8 @@ def _cal_ch_correlation_matrix(X):
     correlation_matrix = np.corrcoef(X)
     np.fill_diagonal(correlation_matrix, 0)
 
-    # correlation_matrix = np.zeros((ch_num, ch_num))
-    # for i in range(ch_num):
-    #     for j in range(i+1, ch_num):
-    #         cor_ij = np.corrcoef(X[i, :], X[j, :])[0,1]
-    #         correlation_matrix[i, j] = cor_ij
-    #         correlation_matrix[j, i] = cor_ij
-
 
     selected_correlation_matrix = np.zeros(correlation_matrix.shape)
-    # 取前三相似的相关系数值，其他全部赋为0
 
     max_idx = np.argsort(correlation_matrix, axis=1)[:, -3:][:, ::-1]
     for i in range(ch_num):
@@ -371,8 +340,7 @@ class SSVEP_TDCA():
         self.mode = 'normal'
         self.ch_num = None
         self.stimulus_num = None
-        self.test_trials_correlations = None  # 最后计算出每个测试数据与每个类别模板的相关系数
-
+        self.test_trials_correlations = None 
     def __copy__(self):
         copy_model = SSVEP_TDCA(n_component = self.n_component,
                           n_jobs = self.n_jobs,
@@ -411,9 +379,7 @@ class SSVEP_TDCA():
 
         self.train_data = X.copy()
         self.train_label = Y.copy()
-        # template signals and spatial filters
-        #   U: (filterbank_num * stimulus_num * channel_num * n_component)
-        #   X or template_sig: (filterbank_num, channel_num, signal_len)
+        
         filterbank_num, channel_num, signal_len = X[0].shape
         self.ch_num = channel_num
 
@@ -429,16 +395,16 @@ class SSVEP_TDCA():
 
         U = np.zeros((filterbank_num, 1, channel_num * n_delay, n_component))
         for filterbank_idx in range(filterbank_num):
-            # list[list]: (class_num, ), list: (trial_num, ), array: (channel, time)
+            
             X_train = [[X[i][filterbank_idx,:,:] for i in np.where(np.array(Y) == class_val)[0]] for class_val in possible_class]
             trial_num = len(X_train[0])
 
             P_combine_X_train, P_combine_X_train_mean = _augmentData(X_train, train_ref_sig_P, n_delay, self.n_jobs)
-            # Calulcate spatial filter
-            P_combine_X_train_all_mean = mean_list(P_combine_X_train_mean)  # (n_delay*channel, 2*time) 所有类别的trial的平均
+            
+            P_combine_X_train_all_mean = mean_list(P_combine_X_train_mean) 
             X_tmp = []
             X_mean = []
-            # 把所有类的所有trial按照类别分别放到X_tmp这个list中, 每个trial对应的类的平均值放在X_mean中
+            
             for P_combine_X_train_single_class, P_combine_X_train_mean_single_class in zip(P_combine_X_train, P_combine_X_train_mean):
                 for X_tmp_tmp in P_combine_X_train_single_class:
                     X_tmp.append(X_tmp_tmp)
@@ -460,13 +426,13 @@ class SSVEP_TDCA():
                     Sw_list.append(
                         _covariance(X = X_tmp_tmp, X_mean = X_mean_tmp, num = trial_num, division_num = trial_num)
                     )
-                # Sw_list: list: (class_num*trial_num, ), array: (n_delay*channel, n_delay*channel)
+                
                 Sb_list = []
                 for P_combine_X_train_mean_single_class in P_combine_X_train_mean:
                     Sb_list.append(
                         _covariance(X = P_combine_X_train_mean_single_class, X_mean = P_combine_X_train_all_mean, num = stimulus_num, division_num = stimulus_num)
                     )
-                # Sb_list: list: (class_num, ), array: (n_delay*channel, n_delay*channel)
+                
 
             Sw = sum_list(Sw_list)
             Sb = sum_list(Sb_list)
@@ -474,7 +440,6 @@ class SSVEP_TDCA():
             U[filterbank_idx,0,:,:] = eig_vec[:,:n_component]
         U = np.repeat(U, repeats = stimulus_num, axis = 1)
         self.model['U'] = U
-        # self.model['template_sig'] = template_sig
         
 
     def get_template_sig(self, train_data, train_label, test_ref_sig_P):
@@ -496,11 +461,11 @@ class SSVEP_TDCA():
         possible_class = list(set(train_label))
         possible_class.sort(reverse=False)
         stimulus_num = len(possible_class)
-        # 每个类别的所有trial的增强信号的平均
+        
         template_sig = [np.zeros((filterbank_num, channel_num * n_delay, signal_len + test_ref_sig_P[0].shape[1])) for _ in range(stimulus_num)]
 
         for filterbank_idx in range(filterbank_num):
-            # list[list]: (class_num, ), list: (trial_num, ), array: (channel, time)
+            
             X_train = [[train_data_copy[i][filterbank_idx,:,:] for i in np.where(np.array(train_label) == class_val)[0]] for class_val in possible_class]
             trial_num = len(X_train[0])
 
@@ -514,9 +479,9 @@ class SSVEP_TDCA():
 
         for k in range(filterbank_num):
             for i in range(stimulus_num):
-                tmp = template_sig[i][k, :, :]  # (n_delay*channel, 2*time)
-                A_r = U[k, i, :, :]  # (n_delay*channel, n_component)
-                a = A_r.T @ tmp  # (n_component, 2*time)，待分类trial的空域滤波结果
+                tmp = template_sig[i][k, :, :]  
+                A_r = U[k, i, :, :] 
+                a = A_r.T @ tmp  
                 spatial_filtered_template_sig[i][k, :, :] = a
 
 
@@ -547,8 +512,6 @@ class SSVEP_TDCA():
 
         template_sig, spatial_filtered_template_sig = self.get_template_sig(self.train_data, self.train_label, test_ref_sig_P)
 
-        # 保存test set中每个trial经过空域滤波的结果
-        # list: (trials, ), ndarray: (filterbank, stimulus_num, n_component, 2*time)
         spatial_filtered_test_trials = []
 
         if self.n_jobs is not None:
@@ -559,18 +522,16 @@ class SSVEP_TDCA():
                 trial_r, trial_spatial_filtered_data = _r_canoncorr_withUV(X=a, Y=template_sig, P=test_ref_sig_P, U=U, V=U)
                 r.append(trial_r)
                 spatial_filtered_test_trials.append(trial_spatial_filtered_data)
-            # r: list: (epoch, ), array: (filterbank, class_num)
 
         self.test_trials_correlations = [weights_filterbank @ r_tmp for r_tmp in r]
         Y_pred = [int(np.argmax(trial_correlations)) for trial_correlations in self.test_trials_correlations]
-        # Y_pred: list: (epoch, ), int
         
         return Y_pred, spatial_filtered_test_trials, template_sig, spatial_filtered_template_sig
 
     def score(self, X, y, test_ref_sig, returnTemplate=False):
         y_pred, spatial_filtered_test_trials, template_sig, spatial_filtered_template_sig = self.predict(X, test_ref_sig)
         if returnTemplate == False:
-            # print('acc: ', accuracy_score(y, y_pred))
+            
             return accuracy_score(y, y_pred), spatial_filtered_test_trials
         else:
             return accuracy_score(y, y_pred), spatial_filtered_test_trials, template_sig, spatial_filtered_template_sig
@@ -591,13 +552,12 @@ class SSVEP_Egraph(SSVEP_TDCA):
         self.electrodes_adjacent_matrix = electrodes_adjacent_matrix
         self.mode = 'egraph'
         self.electrodes_names = electrodes_names
-        self.interpolation_matrices = interpolation_matrices  # 仅在MNE模式下只有一个通道需要插值时使用
-
+        self.interpolation_matrices = interpolation_matrices 
         if electrodes_adjacent_matrix is None and electrodes_names is None:
             raise ValueError('One of electrodes_adjacent_matrix and electrodes_names must not be None!')
 
         if self.electrodes_names is not None:
-            self.mne_info = create_eeg_info(self.electrodes_names, srate=250) #这里采样率随便赋值，不影响结果
+            self.mne_info = create_eeg_info(self.electrodes_names, srate=250)
 
 
     def predict(self,
@@ -608,10 +568,7 @@ class SSVEP_Egraph(SSVEP_TDCA):
             for trial_idx, test_trial in enumerate(X):
                 X[trial_idx] = _replace_with_weighted_average(test_trial, self.electrodes_adjacent_matrix, bad_channel_indices)
         else:
-            # for trial_idx, test_trial in enumerate(X):
-            #     X[trial_idx] = interpolate_bad(test_trial, self.mne_info, bad_channel_indices)
-
-            # 只有一个通道插值的情况下可以使用下面这串代码，用提前保存的interpolation matrix进行插值提高效率
+            
             if len(bad_channel_indices) > 0:
                 good_channel_indices = list(np.delete(np.arange(0, X[0].shape[1]), bad_channel_indices))
                 for trial_idx, test_trial in enumerate(X):
@@ -640,8 +597,6 @@ class SSVEP_Egraph(SSVEP_TDCA):
         template_sig, spatial_filtered_template_sig = self.get_template_sig(self.train_data, self.train_label,
                                                                             test_ref_sig_P)
 
-        # 保存test set中每个trial经过空域滤波的结果
-        # list: (trials, ), ndarray: (filterbank, stimulus_num, n_component, 2*time)
         spatial_filtered_test_trials = []
 
         if self.n_jobs is not None:
@@ -666,7 +621,7 @@ class SSVEP_Egraph(SSVEP_TDCA):
     def score(self, X, y, test_ref_sig, bad_channel_indices: list=None, returnTemplate=False, returnRecon=False):
         y_pred, spatial_filtered_test_trials, template_sig, spatial_filtered_template_sig, recon_X = self.predict(X, test_ref_sig, bad_channel_indices)
         if returnTemplate == False and returnRecon == False:
-            # print('acc: ', accuracy_score(y, y_pred))
+            
             return accuracy_score(y, y_pred), spatial_filtered_test_trials
         elif returnTemplate == True and returnRecon == False:
             return accuracy_score(y, y_pred), spatial_filtered_test_trials, template_sig, spatial_filtered_template_sig
@@ -685,7 +640,6 @@ class SSVEP_Sgraph(SSVEP_TDCA):
         super(SSVEP_Sgraph, self).__init__(n_component, n_jobs, weights_filterbank, n_delay)
         self.mode = 'sgraph'
         self.electrodes_adjacent_matrices = None
-
 
 
     def _CAM_r_canoncorr_withUV(self,
@@ -740,8 +694,6 @@ class SSVEP_Sgraph(SSVEP_TDCA):
 
         R = np.zeros((filterbank_num, stimulus_num))
 
-        # 一个trial中多个filterbank频带数据经过n_component个空域滤波器的结果
-        # ndarray: (filterbank, stimulus_num, n_component, 2*time)
         trial_spatial_filtered_data = np.zeros((filterbank_num, stimulus_num, n_component, signal_len + P[0].shape[-1]))
         recon_X_trial = np.zeros(X_copy.shape)
         for k in range(filterbank_num):
@@ -766,16 +718,15 @@ class SSVEP_Sgraph(SSVEP_TDCA):
                 A_r = U[k, i, :, :]  # (n_delay*channel, n_component)
                 B_r = V[k, i, :, :]
 
-                a = A_r.T @ tmp  # (n_component, 2*time)，待分类trial的空域滤波结果
-                b = B_r.T @ Y_tmp  # 第i类的template的空域滤波结果
+                a = A_r.T @ tmp  
+                b = B_r.T @ Y_tmp  
 
                 trial_spatial_filtered_data[k, i, :, :] = a
 
                 a = np.reshape(a, (-1))
                 b = np.reshape(b, (-1))
 
-                # r2 = stats.pearsonr(a, b)[0]
-                # r = stats.pearsonr(a, b)[0]
+            
                 r = np.corrcoef(a, b)[0, 1]
                 R[k, i] = r
 
@@ -786,7 +737,7 @@ class SSVEP_Sgraph(SSVEP_TDCA):
     def predict(self,
                 X_test: List[ndarray], test_ref_sig, bad_channel_indices: list = None) -> List[int]:
 
-        X = X_test[:]  # 复制，不改变原值
+        X = X_test[:] 
         recon_X = []
         weights_filterbank = self.model['weights_filterbank']
         if weights_filterbank is None:
@@ -814,12 +765,11 @@ class SSVEP_Sgraph(SSVEP_TDCA):
         template_sig, spatial_filtered_template_sig = self.get_template_sig(self.train_data, self.train_label,
                                                                             test_ref_sig_P)
 
-        # 每个filterbank下的每个stimulus形状为(n_delay*channel, 2*time)
-        # 用未delay的通道计算一个邻接矩阵
+        
         correlation_matrices = [np.zeros((filterbank_num, self.ch_num, self.ch_num)) for _ in range(test_class_num)]
         for fb_idx in range(filterbank_num):
             for sti_idx in range(test_class_num):
-                # 一个刺激类别下的其中一个fb, 取出未delay的通道
+                
                 stimulus_fb_template = template_sig[sti_idx][fb_idx, :self.ch_num, :sig_len]
                 stimulus_fb_correlation_matrix = _cal_ch_correlation_matrix(stimulus_fb_template)
                 correlation_matrices[sti_idx][fb_idx, :, :] = stimulus_fb_correlation_matrix
@@ -827,7 +777,6 @@ class SSVEP_Sgraph(SSVEP_TDCA):
 
         self.electrodes_adjacent_matrices = correlation_matrices
 
-        # 保存test set中每个trial经过空域滤波的结果
         # list: (trials, ), ndarray: (filterbank, stimulus_num, n_component, 2*time)
         spatial_filtered_test_trials = []
 
@@ -865,7 +814,6 @@ class SSVEP_Sgraph(SSVEP_TDCA):
             return accuracy_score(y, y_pred), spatial_filtered_test_trials, recon_X
         elif returnTemplate == True and returnRecon == True:
             return accuracy_score(y, y_pred), spatial_filtered_test_trials, template_sig, spatial_filtered_template_sig, recon_X
-
 
 
 class weighted_sum(nn.Module):
@@ -918,7 +866,6 @@ class SSVEP_MGIF():
 
             train_correlations, train_labels = self.create_channel_attacked_correlations(X, Y, train_ref_sig)
 
-            # 只使用EAM和CAM的结果
             train_correlations = train_correlations[:, 40:]
 
             train_correlations = torch.from_numpy(train_correlations).type(torch.float32)
@@ -964,19 +911,16 @@ class SSVEP_MGIF():
 
 
     def create_channel_attacked_correlations(self, X, Y, ref_sig):
-        # 调用完fit后调用此方法
-        # 对每种通道缺失类型的训练数据进行测试，得到训练数据的相关系数
-        # 前9个循环分别对每个通道进行attack，最后一个循环加入certain数据
 
         correlations = []
         labels = []
         for ch_idx in range(X[0].shape[1] + 1):
             X_attack = []
             for trial_idx in range(len(X)):
-                attacked_trial = X[trial_idx].copy()  # 不能改变原值
+                attacked_trial = X[trial_idx].copy()  
                 if ch_idx < X[0].shape[1]:
                     attacked_trial[:, ch_idx, :] = 0
-                    # 一个trial的所有filterbank替换成一样的高斯噪声
+                
                     noise = add_gaussian_white_noise(attacked_trial[0, ch_idx, :], target_noise_db=0,
                                                      mode='noisePower')
                     attacked_trial[:, ch_idx, :] = np.stack([noise for _ in range(attacked_trial.shape[0])], axis=0)
@@ -1018,8 +962,8 @@ class SSVEP_MGIF():
         Parameters
         ----------
         - method : str
-            'max': 三种方法在每一类别的相关系数取最大值后再从整合后的相关系数中选择最大值所在的类别
-            'sum': 三种方法的相关系数先在方法内部进行归一化，然后加权
+            'max'
+            'sum'
 
         Returns
         -------
@@ -1089,13 +1033,10 @@ class SSVEP_MGIF():
         elif self.method == 'sum':
             robust_acc = _sum(normal_correlations, eam_correlations, cam_correlations)
         elif self.method == 'all':
-            #before_n, before_e, before_c = normal_correlations.copy(), eam_correlations.copy(), cam_correlations.copy()
+            
             robust_acc_weights = _weights(normal_correlations, eam_correlations, cam_correlations)
             robust_acc_max = _max(normal_correlations, eam_correlations, cam_correlations)
             robust_acc_sum = _sum(normal_correlations, eam_correlations, cam_correlations)
-            # print(are_lists_equal(before_n, normal_correlations))
-            # print(are_lists_equal(before_e, eam_correlations))
-            # print(are_lists_equal(before_c, cam_correlations))
 
         else:
             raise ValueError('method must be one of sum, max, weights or all!')
