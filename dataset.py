@@ -1,12 +1,9 @@
 import numpy as np
 import pickle
 import scipy
-# import torch
 from utils import get_ref_sig, filterbank, loadmat, notch_filter, filter
 import matplotlib.pyplot as plt
 from sklearn import preprocessing
-# from torch.utils.data import TensorDataset
-
 
 def readSubjectData(dataset_name, subject_name,
                     data_divide_method='class', test_block_idx=0, filterbank_num=2,
@@ -21,7 +18,6 @@ def readSubjectData(dataset_name, subject_name,
                     mergeBlock=False,
                     test_uncertainty_frame=0):
     '''
-    每次取出指定dataset中的一个指定被试的数据并划分为训练集和测试集，同时返回对应的刺激
     - data_divide_method: bool
         'class': the stimulus frequencies in the training set and test set are not overlapped.
         'block': divide the training set and test set according to blocks.
@@ -63,9 +59,6 @@ def readSubjectData(dataset_name, subject_name,
         if >0, return the uncertain stimulus and test data under which the frame specified
             by the parameter is lost.
 
-
-
-
     :return:
     - train_dict: dict
        if stimulus type is cVEP:
@@ -78,12 +71,6 @@ def readSubjectData(dataset_name, subject_name,
     '''
 
     if dataset_name == 'data':
-        # cVEP
-        # 训练集：20个类，每个类重复4次，每个试次3s
-        # 测试集：40个类，每个类重复5次，每个试次3s
-        # 采样率：250 Hz
-        # cVEP数据不用截取0.14s之后，因为在算法里会截取
-
         srate = 250
 
         restrain = open('data/datasets/pre.pickle', 'rb')
@@ -102,25 +89,18 @@ def readSubjectData(dataset_name, subject_name,
         chnINX = [eegtrain[subindex]['channel'].index(i) for i in chnNames]
 
         # data for train
-        train_data = eegtrain[subindex]['stimulus']['X'][:, chnINX, :]  # (80,21,750)，20个目标，重复4次
-        train_label = eegtrain[subindex]['stimulus']['y'] - 1  # (80,)
-        train_stimulus = eegtrain[subindex]['stimulus']['STI']  # (20,750)
+        train_data = eegtrain[subindex]['stimulus']['X'][:, chnINX, :]  
+        train_label = eegtrain[subindex]['stimulus']['y'] - 1 
+        train_stimulus = eegtrain[subindex]['stimulus']['STI']  
         train_dict = {'data': train_data, 'label': train_label, 'stimulus': train_stimulus}
         # data for test
-        test_data = eegtest[subindex]['wn']['X'][:, chnINX, :]  # (200,21,750)， 40个目标，重复5次
-        test_label = eegtest[subindex]['wn']['y'] - 1  # (200,)
-        test_stimulus = eegtest[subindex]['wn']['STI']  # (40,750)
+        test_data = eegtest[subindex]['wn']['X'][:, chnINX, :]  
+        test_label = eegtest[subindex]['wn']['y'] - 1  
+        test_stimulus = eegtest[subindex]['wn']['STI']  
         test_dict = {'data': test_data, 'label': test_label, 'stimulus': test_stimulus}
 
 
     elif dataset_name == 'Benchmark':
-        # SSVEP
-        # 总共40个类，每个类重复6次，每个试次6s (其中前0.5s是刺激前数据，5s刺激，后0.5s休息)
-        # 训练集：10个类，每个类重复6次，每个试次5.5s
-        # 测试集：30个类，每个类重复6次，每个试次5.5s
-        # 采样率： 250 Hz
-        # Benchmark数据的6s中只有中间5s有用（前0.5s刺激还没开始，后0.5s没有刺激）
-        # SSVEP数据要截取0.14s之后数据
 
         srate = 250
 
@@ -157,34 +137,18 @@ def readSubjectData(dataset_name, subject_name,
 
         if chnNames is None:
             subject_data = subject_data[:, round(srate * (0.5 + latency)):round(srate * 5.5), :,
-                           :]  # (64, 1215, 40, 6)
+                           :]  
         else:
             chnINX = [_CHANNELS.index(i) for i in chnNames]
             subject_data = subject_data[chnINX, round(srate*(0.5+latency)):round(srate*5.5), :, :]  # (9, 1215, 40, 6)
 
-        subject_label = np.repeat(np.arange(0, 40)[:, np.newaxis], repeats=6, axis=1)  # (40, 6)
+        subject_label = np.repeat(np.arange(0, 40)[:, np.newaxis], repeats=6, axis=1)  
 
-        # if data_divide_method == 'class':
-        #     # 用于cVEP方法
-        #     subject_data = subject_data.transpose(2, 3, 0, 1)  # (40, 6, 9, 1215)
-        #     train_data = subject_data[:10, :, :, :]
-        #     train_label = subject_label[:10, :]
-        #     train_data = np.concatenate([block for block in train_data], axis=0)
-        #     train_label = train_label.reshape(-1)
-        #
-        #     test_data = subject_data[10:, :, :, :]
-        #     test_label = subject_label[10:, :]
-        #     test_data = np.concatenate([block for block in test_data], axis=0)
-        #     test_label = test_label.reshape(-1)
-        #
-        #     train_dict = {'data': train_data, 'label': train_label, 'stimulus': _FREQS}
-        #     test_dict = {'data': test_data, 'label': test_label, 'stimulus': _FREQS}
         if data_divide_method == 'block':
-            # 用于SSVEP方法:
-            subject_data = subject_data.transpose(3, 2, 0, 1)  # (6, 40, 21, 1215)
+            
+            subject_data = subject_data.transpose(3, 2, 0, 1) 
             subject_label = subject_label.T
 
-            # 标准化
             for block_idx in range(subject_data.shape[0]):
                 for trial_idx in range(subject_data.shape[1]):
                     for ch_idx in range(subject_data.shape[2]):
@@ -222,22 +186,14 @@ def readSubjectData(dataset_name, subject_name,
                 train_data = [filterbank(trial, srate=srate, num_subbands=filterbank_num) for trial in train_data]
                 test_data = [filterbank(trial, srate=srate, num_subbands=filterbank_num) for trial in test_data]
 
-            # plot_eeg(train_data[0][0], srate, plot_fft=True, show=True)
-            # input()
             train_dict = {'data': train_data, 'label': train_label, 'ref_sig': train_ref_sig, 'freqs': _FREQS,
                           'phases': _PHASES, 'ch_names': _CHANNELS}
             test_dict = {'data': test_data, 'label': test_label, 'ref_sig': test_ref_sig, 'freqs': _FREQS, 'phases': _PHASES,
                          'ch_names': _CHANNELS}
 
     elif dataset_name == 'Exp_pretrain_channel_attacker_6B':
-        # SSVEP
-        # 总共40个类，每个类重复6次 (6 blocks)，每个试次3s
-        # 训练集5个block，测试集1个block
-        # 采样率： 250 Hz
-        # SSVEP数据要截取0.14s之后数据
 
         srate = 250
-
 
         _FREQS = [8, 8.2, 8.4, 8.6, 8.8,
                   9, 9.2, 9.4, 9.6, 9.8,
@@ -258,10 +214,8 @@ def readSubjectData(dataset_name, subject_name,
 
         subject_file = open(root_dir +
             '/Exp_pretrain_channel_attacker/Pickle_data/' + subject_name + '_cnt/Reliable_6B_SSVEP_3s.pickle',
-            'rb')  # 以二进制读模式（rb）打开pkl文件
-        subject_data_dict = pickle.load(subject_file)  # 读取存储的pickle文件
-
-        # (64, 750, 40, 6), (40, 6), (64, 6)
+            'rb') 
+        subject_data_dict = pickle.load(subject_file)  
         subject_data, subject_label, channels = subject_data_dict['SSVEP_freqs'].values()
         ch_names = channels[:, 0]
 
@@ -273,11 +227,9 @@ def readSubjectData(dataset_name, subject_name,
 
 
         subject_data = subject_data[chnINX, round(srate * latency):, :, :]  # (21, 715, 40, 6)
-        #subject_label = np.repeat(np.arange(0, 40)[:, np.newaxis], repeats=6, axis=1)  # (40, 6)
         subject_label = subject_label - 41
 
         if data_divide_method == 'block':
-            # 用于SSVEP方法:
             subject_data = subject_data.transpose(3, 2, 0, 1)  # (6, 40, 21, 715)
             subject_label = subject_label.T
 
@@ -319,11 +271,6 @@ def readSubjectData(dataset_name, subject_name,
             test_dict = {'data': test_data, 'label': test_label, 'ref_sig': test_ref_sig, 'freqs': _FREQS, 'phases': _PHASES, 'ch_names': ch_names}
 
     elif dataset_name == 'Exp_stimulus_to_task':
-        # cVEP
-        # 训练集：20个类，每个类重复6次，每个试次3s
-        # 测试集：40个类，每个类重复6次，每个试次3s
-        # 采样率：250 Hz
-        # cVEP数据不用截取0.14s之后，因为在算法里会截取
 
         srate = 250
 
@@ -351,7 +298,6 @@ def readSubjectData(dataset_name, subject_name,
         train_data = train_data[chnINX, :, :, :].transpose(3, 2, 0, 1)
         test_data = test_data[chnINX, :, :, :].transpose(3, 2, 0, 1)
 
-        # train label已经减过，不用再减
         train_label = train_label.T - 1
         test_label = test_label.T - 41
 
@@ -378,12 +324,6 @@ def readSubjectData(dataset_name, subject_name,
         test_dict = {'data': test_data, 'label': test_label, 'stimulus': test_stimulus}
 
     elif dataset_name == 'Beta':
-        # SSVEP
-        # 总共40个类，每个类重复4次，每个试次3s或4s (前15个被试为3s，后面的被试为4s)
-        # 每个trial前0.5s和最后0.5s为无效数据
-        # 训练集3个block，测试集1个block
-        # 采样率： 250 Hz
-        # SSVEP数据要截取0.14s之后数据
 
         srate = 250
 
@@ -394,9 +334,6 @@ def readSubjectData(dataset_name, subject_name,
             'CP2', 'CP4', 'CP6', 'TP8', 'M2', 'P7', 'P5', 'P3', 'P1', 'PZ', 'P2', 'P4', 'P6',
             'P8', 'PO7', 'PO5', 'PO3', 'POZ', 'PO4', 'PO6', 'PO8', 'CB1', 'O1', 'OZ', 'O2', 'CB2'
         ]
-
-
-
 
         _FREQS = [
             8.6, 8.8,
@@ -441,7 +378,6 @@ def readSubjectData(dataset_name, subject_name,
             subject_data = subject_data[:, round(srate * (0.5 + latency)):round(srate * 2.5), :,
                            :]  # (64, 465, 4, 40)
 
-
         subject_label = np.repeat(np.arange(0, 40)[:, np.newaxis], repeats=4, axis=1)  # (40, 4)
 
 
@@ -450,7 +386,6 @@ def readSubjectData(dataset_name, subject_name,
             subject_data = subject_data.transpose(2, 3, 0, 1)  # (4, 40, 64, time)
             subject_label = subject_label.T  # (4, 40)
 
-            # 标准化
             for block_idx in range(subject_data.shape[0]):
                 for trial_idx in range(subject_data.shape[1]):
                     for ch_idx in range(subject_data.shape[2]):
@@ -493,17 +428,7 @@ def readSubjectData(dataset_name, subject_name,
                          'phases': _PHASES, 'ch_names': _CHANNELS}
 
     elif dataset_name == 'Exp_pretrain_channel_attacker_9B':
-        # 构造通道attack情况下的测试集
-        # SSVEP
-        # 9个block，40个类，每个试次3s
-        # 每个block都有一个通道被attack
-        # 这里的数据返回形式是list，每一个元素对应一个block的数据，形式为dict
-        # 采样率： 250 Hz
-        # SSVEP数据要截取0.14s之后数据
-
-        # 模式：
-        # 'full_channel_no_attack': 不选取通道，也不进行attack
-        # 否则按照正常选取通道并分block进行attack
+      
         srate = 250
 
         _FREQS = [
@@ -525,18 +450,16 @@ def readSubjectData(dataset_name, subject_name,
         ########### load attacked blocks #############
         subject_data_file = open(root_dir +
             '/Exp_pretrain_channel_attacker/Pickle_data/' + subject_name + '_cnt/Unreliable_9B_SSVEP_3s.pickle',
-            'rb')  # 以二进制读模式（rb）打开pkl文件
-        subject_data_dict = pickle.load(subject_data_file)  # 读取存储的pickle文件
+            'rb')  
+        subject_data_dict = pickle.load(subject_data_file) 
 
-        # (64, 750, 40, 9), (40, 9), (64, 9)
         subject_data, subject_label, channels = subject_data_dict['SSVEP_freqs'].values()
 
         ########### load attacker file #############
         subject_attacker_file = open(root_dir +
                                      '/Exp_pretrain_channel_attacker/Pickle_data/' + subject_name + '_cnt/Uncertainty_1B_SSVEP_3s.pickle',
-                                     'rb')  # 以二进制读模式（rb）打开pkl文件
+                                     'rb') 
         subject_attacker_data_dict = pickle.load(subject_attacker_file)
-        # (64, 750, 40, 1), (40, 1), (64, 1)
         attacker_data, _, _ = subject_attacker_data_dict['SSVEP_freqs'].values()
 
 
@@ -565,17 +488,7 @@ def readSubjectData(dataset_name, subject_name,
                                    N=harmonic_number,  # harmonic number
                                    ignore_stim_phase=False)  # # list: (class_num, ), array: (2*N, test_data_time)
 
-        # plot to validate the attacked channels
-        # block_idx = 9
-        # block_data = subject_data[block_idx, :, :, :]
-        # trial_data = block_data[0, :, :]  # (9, time)
-        # # raw = create_raw(trial_data, srate)
-        # # raw.plot()
-        # plot_eeg(trial_data, srate)
-        # input()
 
-
-        # 对每个block，将对应通道换成空导中的数据
         if attack_method == 'all_block_diff':
             for block_idx in range(nblock):
                 subject_data[block_idx, :, block_idx, :] = subject_data[-1, :, block_idx, :]
@@ -591,18 +504,6 @@ def readSubjectData(dataset_name, subject_name,
 
             subject_data = subject_data[:nblock, :, :, :]  # (9, 40, 9, 715)
 
-        # plot to validate the attacked channels
-        # block_idx = 0
-        # block_data = subject_data[block_idx, :, :, :]
-        # trial_data = block_data[0, :, :]  # (9, time)
-        # # raw = create_raw(trial_data, srate)
-        # # raw.plot()
-        # plot_eeg(trial_data, srate)
-        # input()
-
-
-        # 如果mergeBlock == False，就将每个block的数据作为dict放入一个list中
-        # 否则将多个block的数据合并
         if mergeBlock == False:
 
             test_block_list = []
@@ -643,13 +544,6 @@ def readSubjectData(dataset_name, subject_name,
 
     return train_dict, test_dict
 
-# readSubjectData('Exp_pretrain_channel_attacker_6B', 'zhouyuqing', data_divide_method='block')
-# readSubjectData('Benchmark', 'S1', data_divide_method='block')
-# readSubjectData('data', 'huchunjiang')
-# readSubjectData('Beta', 'S1', data_divide_method='block', root_dir='F:/Xinyu Mou/SSVEP_dataset')
-
-
-
 def build_Benchmark_dataset(root_dir, winLEN=1):
     ########### Benchmark ############
     dataset_name = 'Benchmark'
@@ -659,11 +553,10 @@ def build_Benchmark_dataset(root_dir, winLEN=1):
     fs = 250
     num_subbands = 1
     harmonic_num = 5
-    delay_num = 0  # 数据增强时延迟的个数
+    delay_num = 0  
     electrodes_adjacent_matrix = np.loadtxt(
         root_dir + '/' + dataset_name + '/Benchmark_9ch_normalized_adjacency_matrix.csv', delimiter=',')
-    #interpolation_matrices = np.load(root_dir + '/' + dataset_name + '/interpolation_matrix/9ch_interpolation_matrix.npy')
-
+    
     train_data = []
     test_data = []
     for sub_name in sub_name_list:
