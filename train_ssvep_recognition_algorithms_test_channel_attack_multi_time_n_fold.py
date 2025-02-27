@@ -17,7 +17,7 @@ warnings.filterwarnings('ignore')
 
 def get_args():
     parser = argparse.ArgumentParser('parameters', add_help=False)
-    parser.add_argument('--target_noise_db', default=0, type=int) # 对应噪声方差为1
+    parser.add_argument('--target_noise_db', default=0, type=int) 
 
     parser.add_argument('--mode', default='mgif', type=str,
                         help='normal, egraph, sgraph, or mgif')
@@ -37,9 +37,6 @@ ssvep_selected_channels = ['PZ', 'PO5', 'PO3', 'POZ', 'PO4', 'PO6', 'O1', 'OZ', 
 interpolation_matrices = np.load('interpolation_matrix/9ch_interpolation_matrix.npy')
 
 
-
-
-
 def n_fold_evaluation(dataset_name, subject_name, clf_1, n_fold, train_winLEN, test_winLEN, num_subbands=5, harmonic_num=5):
     n_fold_accs = []
     n_fold_itrs = []
@@ -48,11 +45,10 @@ def n_fold_evaluation(dataset_name, subject_name, clf_1, n_fold, train_winLEN, t
         fold_accs, fold_itrs = evaluation_on_attacked_data(dataset_name, subject_name, clf_1, fold_idx, train_winLEN, test_winLEN, num_subbands, harmonic_num)
         n_fold_accs.append(fold_accs)
         n_fold_itrs.append(fold_itrs)
-    n_fold_accs = np.stack(n_fold_accs)  # (n_fold, ch_num+1)
+    n_fold_accs = np.stack(n_fold_accs) 
     n_fold_itrs = np.stack(n_fold_itrs)
 
     return n_fold_accs, n_fold_itrs
-
 
 def evaluation_on_attacked_data(dataset_name, subject_name, clf_1, fold_idx, train_winLEN, test_winLEN, num_subbands=5, harmonic_num=5):
 
@@ -101,16 +97,14 @@ def evaluation_on_attacked_data(dataset_name, subject_name, clf_1, fold_idx, tra
     for ch_idx in range(ch_num):
         X_test_attack = []
         for trial_idx in range(len(X_test_common)):
-            attacked_trial = X_test_common[trial_idx].copy()  # 不能改变原值
+            attacked_trial = X_test_common[trial_idx].copy()  
             attacked_trial[:, ch_idx, :] = 0
 
-            # 一个trial的所有filterbank替换成一样的高斯噪声
             noise = add_gaussian_white_noise(attacked_trial[0, ch_idx, :], target_noise_db=args.target_noise_db, mode='noisePower')
 
             attacked_trial[:, ch_idx, :] = np.stack([noise for _ in range(attacked_trial.shape[0])], axis=0)
 
             X_test_attack.append(attacked_trial)
-
 
         test_class_num = len(test_ref_sig)
 
@@ -128,7 +122,7 @@ def evaluation_on_attacked_data(dataset_name, subject_name, clf_1, fold_idx, tra
         itrs[ch_idx+1] += itr
 
 
-    return accs, itrs   # (10, ), (10, )
+    return accs, itrs  
 
 def main(args):
     if args.dataset_name == 'Benchmark':
@@ -137,7 +131,7 @@ def main(args):
         fs = 250
         num_subbands = 5
         harmonic_num = 5
-        delay_num = 0  # 数据增强时延迟的个数
+        delay_num = 0 
 
     elif args.dataset_name == 'Beta':
         sub_name_list = ['S' + str(idx) for idx in range(1, 71)]
@@ -145,7 +139,7 @@ def main(args):
         fs = 250
         num_subbands = 5
         harmonic_num = 5
-        delay_num = 0  # 数据增强时延迟的个数
+        delay_num = 0  
 
     acc_all = np.zeros((len(sub_name_list), 5, 10, n_fold))  # 1 common test + 9 attack test
     itr_all = np.zeros((len(sub_name_list), 5, 10, n_fold))
@@ -156,7 +150,6 @@ def main(args):
         print('======================== subject: ', subject_name, ' ========================')
         for t_idx in range(5):
             winLEN = 0.2 + t_idx * 0.2
-            # winLEN = 1
             print('******** window length: ', str(winLEN), 's **********')
             time_start = time.time()
             weights_filterbank = suggested_weights_filterbank()
