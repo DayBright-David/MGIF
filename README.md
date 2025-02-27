@@ -39,7 +39,7 @@ The detailed explanation of the parameters:
 | :-------------: | :--: | :----------------------------------------------------------: |
 |  dataset_name   | str  |                    `Benchmark` or `Beta`                     |
 |    root_dir     | str  |     Root directory of the dataset. Default is `dataset`.     |
-|      mode       | str  | Type of the recognition method, can be specified as <br>`normal` -- normal TDCA <br/>`egraph` -- E-graph <br/>`sgraph` -- S-graph <br/>`mgif` -- MGIF |
+|      mode       | str  | Type of the recognition method, can be specified as <br>`normal` -- standard method <br/>`egraph` -- E-graph <br/>`sgraph` -- S-graph <br/>`mgif` -- MGIF |
 |    mgif_mode    | str  | Only used when `mode==mgif`. Can be specified as `sum`, `max`, or `weights`. |
 | target_noise_db | int  | Power of the noise in dB. Default is `0`, corresponding to a noise variance of `1`. |
 
