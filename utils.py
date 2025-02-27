@@ -626,21 +626,19 @@ def zero_channels(X_origin, channel_bug):
     返回:
     X_zeroed -- 赋值后的numpy数组
     """
-    # X_zeroed = X_origin.copy()  # 创建一个X的副本，避免在原始数据上进行更改
-    X_attacked = X_origin.copy()  # 20240110
+    
+    X_attacked = X_origin.copy()  
     for channel in channel_bug:
-        if channel < X_origin.shape[0]:  # 确保通道索引在有效范围内
-            # X_zeroed[channel, :, :] = 0  # 将指定通道的值赋为0
-            # 20240110
-            # 加载pickle文件S1_attacker.pickle
+        if channel < X_origin.shape[0]:  
+            
             X_attacker = np.load('S1_attacker.pickle', allow_pickle=True)
-            # 转换维度为（9，250，40，1），再squeeze成（9，250，40）
+            
             X_attacker = X_attacker.squeeze().transpose((1, 0, 2))
-            # 取X_attacker中第二维度中的X_origin.shape[1]个数据
+           
             X_attacker = X_attacker[:, :X_origin.shape[1], :]
-            # 用X_attacker中的第channel个通道替换X_attacked中的第channel个通道
+            
             X_attacked[channel, :, :] = X_attacker[channel, :, :]
-            # 查看X_attacked中的其他channel是否保持不变，和X_origin中的其他channel是否保持一致
+            
             print(np.all(X_attacked[0, :, :] == X_origin[0, :, :]))
             print(np.all(X_attacked[1, :, :] == X_origin[1, :, :]))
             print(np.all(X_attacked[2, :, :] == X_origin[2, :, :]))
@@ -735,7 +733,6 @@ electrode_text_data = """
 64 135 0.72222 CB2
 """
 
-
 def plv(x, freq, phase, srate):
     '''
     Calculate the phase locking value (PLV) using multiple trials corresponding to a
@@ -803,17 +800,6 @@ def getTrialData(x, y, idx):
             trial_x.append(x[trial_idx])
 
     return trial_x
-
-# def create_raw(x, srate, ch_names=None):
-#     if ch_names is None:
-#         ch_names = x.shape[0]
-#
-#     info = mne.create_info(ch_names=ch_names, sfreq=srate, ch_types='eeg')
-#     raw = mne.io.RawArray(x, info)
-#
-#     return raw
-
-
 
 
 def cal_correlations_with_template(multi_ch_data, template):
@@ -947,7 +933,6 @@ def get_channel_information():
         all_channel_names.append(label)
 
     return all_electrode_positions, all_channel_names
-
 
 
 def create_raw_eeg(X, srate, ch_names):
