@@ -1,6 +1,6 @@
 # A Reliability-Enhanced Brain-Computer Interface via Mixture-of-Graphs-driven Information Fusion
 
-This repo contains the implementation of the paper [A Reliability-Enhanced Brain-Computer Interface via Mixture-of-Graphs-driven Information Fusion]()
+This repo contains the implementation of the paper [A Reliability-Enhanced Brain-Computer Interface via Mixture-of-Graphs-driven Information Fusion](https://www.sciencedirect.com/science/article/pii/S1566253525001423#:~:text=This%20study%20presents%20a%20novel%20Mixture-of-Graphs-driven%20Information%20Fusion,integration%20of%20multi-graph%20knowledge%20for%20stable%20EEG%20representat)
 
 ![](./figs/Why_MGIF.png)
 
