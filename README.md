@@ -2,7 +2,7 @@
 
 This repo contains the implementation of the paper [A Reliability-Enhanced Brain-Computer Interface via Mixture-of-Graphs-driven Information Fusion]()
 
-![](./figs/fig1.png)
+![](./figs/MGIF.pdf)
 
 Reliable Brain-Computer Interface (BCI) systems are essential for practical applications. Current BCIs often suffer from performance degradation due to environmental noise and external interference. These environmental factors significantly compromise the quality of EEG data acquisition. This study presents a novel Mixture-of-Graphs-driven Information Fusion (MGIF) framework to enhance BCI system robustness through the integration of multi-graph knowledge for stable EEG representations.
 Initially, the framework constructs complementary graph architectures: electrode-based structures for capturing spatial relationships and signal-based structures for modeling inter-channel dependencies. Subsequently, the framework employs filter bank-driven multi-graph constructions to encode spectral information and incorporates a self-play-driven fusion strategy to optimize graph embedding combinations. Finally, an adaptive gating mechanism is implemented to monitor electrode states and enable selective information fusion, thereby minimizing the impact of unreliable electrodes and environmental disturbances. Extensive evaluations through offline datasets and online experiments validate the framework’s effectiveness. Results demonstrate that MGIF achieves significant improvements in BCI reliability across challenging real-world environments.  
