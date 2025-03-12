@@ -48,5 +48,13 @@ The detailed explanation of the parameters:
 If you find this repository useful for your publications, please consider citing our paper.
 
 ```
+@article{dai2025reliability,
+  title={A reliability-enhanced Brain-Computer Interface via Mixture-of-Graphs-driven Information Fusion},
+  author={Dai, Bo and Wang, Yijun and Mou, Xinyu and Gao, Xiaorong},
+  journal={Information Fusion},
+  pages={103069},
+  year={2025},
+  publisher={Elsevier}
+}
 ```
 
