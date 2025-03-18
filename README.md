@@ -25,9 +25,9 @@ Initially, the framework constructs complementary graph architectures: electrode
 
 ## Data preparation
 
-Before executing the code, please download the dataset from https://bci.med.tsinghua.edu.cn/download.html and place it in the `dataset` folder at the same directory level as the scripts. For instance, store all Benchmark subject data in the `dataset/Benchmark` directory.
+Before executing the code, please download the dataset from [**Datasets Link**](https://bci.med.tsinghua.edu.cn/download.html) and place it in the `dataset` folder at the same directory level as the scripts. For instance, store all Benchmark subject data in the `dataset/Benchmark` directory.
 
-We also conducted additional validation experiments, and the data has been made publicly available at: [https://doi.org/10.5281/zenodo.14044363](https://doi.org/10.5281/zenodo.14044363), which we hope will serve as a valuable reference for future researchers.
+We also conducted additional validation experiments, and the data has been made publicly available at: [**BeTrust**](https://doi.org/10.5281/zenodo.14044363), which we hope will serve as a valuable reference for future researchers.
 
 ## Get started
 
